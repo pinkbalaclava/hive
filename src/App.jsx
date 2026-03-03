@@ -241,16 +241,27 @@ async function generatePDFReport(messages, agentUsed) {
 
 // ─── Main App ───
 export default function App() {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(() => {
+    const saved = localStorage.getItem(`hive-chat-${activeAgent.id}`);
+    return saved ? JSON.parse(saved) : [];
+  });
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(null);
   const [activeAgent, setActiveAgent] = useState(AGENTS[0]);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportFeedback, setExportFeedback] = useState("");
+  const [exportEmail, setExportEmail] = useState("");
   const messagesEnd = useRef(null);
   const textareaRef = useRef(null);
 
   useEffect(() => {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing]);
+
+  useEffect(() => {
+    // Save messages to localStorage when they change
+    localStorage.setItem(`hive-chat-${activeAgent.id}`, JSON.stringify(messages));
+  }, [messages, activeAgent]);
 
   const getTime = () => new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
@@ -334,11 +345,12 @@ export default function App() {
         }}>
           <div style={{ padding: "0 20px 24px", borderBottom: "2px solid #000" }}>
             <div style={{
-              fontSize: 28,
+              fontSize: 48,
               fontWeight: 700,
               color: "#CCFF00",
               fontFamily: "'Lora', serif",
-              letterSpacing: "-2px"
+              letterSpacing: "-2px",
+              lineHeight: 1
             }}>
               hive
             </div>
@@ -451,7 +463,7 @@ export default function App() {
             
             {messages.length > 0 && (
               <button
-                onClick={() => generatePDFReport(messages, activeAgent)}
+                onClick={() => setShowExportModal(true)}
                 style={{
                   padding: "10px 16px",
                   background: "#CCFF00",
@@ -476,7 +488,7 @@ export default function App() {
                   e.target.style.boxShadow = "4px 4px 0px 0px #000";
                 }}
               >
-                📥 Export PDF
+                📥 Export
               </button>
             )}
           </div>
@@ -493,7 +505,7 @@ export default function App() {
                   letterSpacing: "1px",
                   fontWeight: 700
                 }}>
-                  {activeAgent.name} Starters:
+                  Suggested questions:
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {activeAgent.starters.map((q, i) => (
@@ -503,28 +515,25 @@ export default function App() {
                       style={{
                         padding: "14px 16px",
                         background: "transparent",
-                        border: "2px solid #CCFF00",
+                        border: "1px solid #333",
                         borderRadius: 0,
                         cursor: "pointer",
                         fontSize: 13,
                         textAlign: "left",
-                        color: "#CCFF00",
+                        color: "#b7c6c2",
                         fontFamily: "inherit",
                         transition: "all 0.1s",
-                        boxShadow: "4px 4px 0px 0px #CCFF00",
-                        fontWeight: 500
+                        fontWeight: 400
                       }}
                       onMouseEnter={e => {
-                        e.target.style.background = "#CCFF00";
-                        e.target.style.color = "#000";
-                        e.target.style.transform = "translate(4px, 4px)";
-                        e.target.style.boxShadow = "none";
+                        e.target.style.background = "#333";
+                        e.target.style.color = "#CCFF00";
+                        e.target.style.borderColor = "#CCFF00";
                       }}
                       onMouseLeave={e => {
                         e.target.style.background = "transparent";
-                        e.target.style.color = "#CCFF00";
-                        e.target.style.transform = "translate(0, 0)";
-                        e.target.style.boxShadow = "4px 4px 0px 0px #CCFF00";
+                        e.target.style.color = "#b7c6c2";
+                        e.target.style.borderColor = "#333";
                       }}
                     >
                       {q}
@@ -656,6 +665,173 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      {/* EXPORT MODAL */}
+      {showExportModal && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.7)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: "#171e19",
+            border: "2px solid #000",
+            borderRadius: 0,
+            padding: "32px",
+            maxWidth: 520,
+            width: "90%",
+            boxShadow: "8px 8px 0px 0px #000"
+          }}>
+            <div style={{
+              fontSize: 18,
+              fontWeight: 700,
+              color: "#CCFF00",
+              fontFamily: "'Lora', serif",
+              marginBottom: 12
+            }}>
+              📥 PDF Reports (Coming Soon)
+            </div>
+            
+            <div style={{
+              fontSize: 12,
+              color: "#b7c6c2",
+              lineHeight: 1.7,
+              marginBottom: 24,
+              background: "#1a1f1a",
+              border: "1px solid #333",
+              padding: "12px 14px"
+            }}>
+              <strong style={{ color: "#CCFF00" }}>Not built yet.</strong> But we're listening. Tell us what kind of report would actually be useful, and we'll build it if there's enough demand. 
+              <br /><br />
+              <em>Your input directly shapes what we build next.</em>
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#b7c6c2", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                What would be most valuable?
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {[
+                  { value: "transcript", label: "Just the conversation transcript" },
+                  { value: "summary", label: "Summary + key insights" },
+                  { value: "actionable", label: "Actionable next steps & decisions" },
+                  { value: "detailed", label: "Deep analysis with each agent's perspective" }
+                ].map(option => (
+                  <label key={option.value} style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    cursor: "pointer",
+                    padding: "8px 0"
+                  }}>
+                    <input
+                      type="radio"
+                      name="reportType"
+                      value={option.value}
+                      checked={exportFeedback === option.value}
+                      onChange={e => setExportFeedback(e.target.value)}
+                      style={{ cursor: "pointer", width: 16, height: 16 }}
+                    />
+                    <span style={{ fontSize: 12, color: "#fff" }}>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#b7c6c2", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Email (optional — we'll tell you when it's ready):
+              </div>
+              <input
+                type="email"
+                placeholder="you@example.com"
+                value={exportEmail}
+                onChange={e => setExportEmail(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  background: "#1a1f1a",
+                  border: "1px solid #333",
+                  color: "#fff",
+                  fontSize: 12,
+                  fontFamily: "inherit",
+                  outline: "none"
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setShowExportModal(false)}
+                style={{
+                  flex: 1,
+                  padding: "10px 16px",
+                  background: "transparent",
+                  color: "#b7c6c2",
+                  border: "1px solid #333",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  transition: "all 0.1s"
+                }}
+                onMouseEnter={e => {
+                  e.target.style.background = "#333";
+                  e.target.style.color = "#fff";
+                }}
+                onMouseLeave={e => {
+                  e.target.style.background = "transparent";
+                  e.target.style.color = "#b7c6c2";
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowExportModal(false);
+                  // Feedback captured - you can implement email sending here later
+                }}
+                style={{
+                  flex: 1,
+                  padding: "10px 16px",
+                  background: "#CCFF00",
+                  color: "#000",
+                  border: "2px solid #000",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  transition: "all 0.1s",
+                  boxShadow: "4px 4px 0px 0px #000"
+                }}
+                onMouseEnter={e => {
+                  e.target.style.transform = "translate(4px, 4px)";
+                  e.target.style.boxShadow = "none";
+                }}
+                onMouseLeave={e => {
+                  e.target.style.transform = "translate(0, 0)";
+                  e.target.style.boxShadow = "4px 4px 0px 0px #000";
+                }}
+              >
+                Send Feedback
+              </button>
+            </div>
+
+            <div style={{
+              fontSize: 10,
+              color: "#666",
+              marginTop: 16,
+              paddingTop: 16,
+              borderTop: "1px solid #333",
+              textAlign: "center"
+            }}>
+              We'll email you when reports are ready
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
